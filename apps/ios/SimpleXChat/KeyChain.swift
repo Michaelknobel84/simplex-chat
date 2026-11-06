@@ -10,7 +10,8 @@ import Foundation
 import Security
 
 private let ACCESS_POLICY: CFString = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
-private let ACCESS_GROUP: String = "5NN7GUYB6T.chat.simplex.app"
+// Injected into each host target's Info.plist ($(AppIdentifierPrefix) + app ID); fallback is the upstream value
+private let ACCESS_GROUP: String = Bundle.main.object(forInfoDictionaryKey: "FastChatKeychainAccessGroup") as? String ?? "5NN7GUYB6T.chat.simplex.app"
 private let DATABASE_PASSWORD_ITEM: String = "databasePassword"
 private let APP_PASSWORD_ITEM: String = "appPassword"
 private let SELF_DESTRUCT_PASSWORD_ITEM: String = "selfDestructPassword"

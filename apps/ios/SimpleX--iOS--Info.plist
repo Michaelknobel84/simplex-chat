@@ -4,8 +4,12 @@
 <dict>
 	<key>BGTaskSchedulerPermittedIdentifiers</key>
 	<array>
-		<string>chat.simplex.app.receive</string>
+		<string>$(FASTCHAT_APP_ID).receive</string>
 	</array>
+	<key>FastChatAppGroup</key>
+	<string>$(FASTCHAT_APP_GROUP)</string>
+	<key>FastChatKeychainAccessGroup</key>
+	<string>$(AppIdentifierPrefix)$(FASTCHAT_APP_ID)</string>
 	<key>CFBundleIcons</key>
 	<dict>
 		<key>CFBundleAlternateIcons</key>

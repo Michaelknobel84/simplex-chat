@@ -11,7 +11,8 @@ import Foundation
 import BackgroundTasks
 import SimpleXChat
 
-private let receiveTaskId = "chat.simplex.app.receive"
+// Must match BGTaskSchedulerPermittedIdentifiers in the Info.plist ($(FASTCHAT_APP_ID).receive)
+private let receiveTaskId = (Bundle.main.bundleIdentifier ?? "chat.simplex.app") + ".receive"
 
 // TCP timeout + 2 sec
 private let waitForMessages: TimeInterval = 6

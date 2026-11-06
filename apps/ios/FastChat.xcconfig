@@ -1,0 +1,6 @@
+// Fast-Chat identifiers and signing defaults. Override any value in Local.xcconfig (git-ignored).
+// FASTCHAT_APP_ID must be globally unique for your Apple Developer team.
+FASTCHAT_APP_ID = app.fastchat.ios
+FASTCHAT_APP_GROUP = group.$(FASTCHAT_APP_ID)
+// Your 10-character Apple Developer Team ID, e.g. in Local.xcconfig.
+FASTCHAT_DEVELOPMENT_TEAM =

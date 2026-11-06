@@ -1,1 +1,2 @@
+#include "FastChat.xcconfig"
 #include? "Local.xcconfig"

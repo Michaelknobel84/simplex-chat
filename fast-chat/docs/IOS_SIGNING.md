@@ -1,6 +1,6 @@
 # iOS signing and capabilities (Phase D)
 
-No secrets are stored in the repo. Put local values (team ID etc.) in `apps/ios/Local.xcconfig`.
+No secrets are stored in the repo. Put local values (team ID etc.) in `apps/ios/Local.xcconfig`. Identifier setup, removed entitlements and push requirements: see `IDENTIFIERS.md`.
 
 Per target (app, NSE, SE): Team, unique bundle IDs, provisioning (automatic signing is fine for development).
 Capabilities: App Groups (upstream `group.chat.simplex.app` cannot be registered by you; pick your own and update all three `.entitlements` and Swift constants), Keychain Sharing, Push Notifications, Background Modes (see Info.plist).

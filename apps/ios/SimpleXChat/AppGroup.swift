@@ -66,7 +66,8 @@ public let GROUP_DEFAULT_PQ_EXPERIMENTAL_ENABLED = "pqExperimentalEnabled" // no
 public let GROUP_DEFAULT_ONE_HAND_UI = "oneHandUI"
 public let GROUP_DEFAULT_CHAT_BOTTOM_BAR = "chatBottomBar"
 
-public let APP_GROUP_NAME = "group.chat.simplex.app"
+// Injected into each host target's Info.plist from FastChat.xcconfig; fallback is the upstream value
+public let APP_GROUP_NAME = Bundle.main.object(forInfoDictionaryKey: "FastChatAppGroup") as? String ?? "group.chat.simplex.app"
 
 public let groupDefaults = UserDefaults(suiteName: APP_GROUP_NAME)!
 
