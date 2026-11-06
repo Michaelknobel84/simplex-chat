@@ -1,0 +1,172 @@
+name: fast-chat-ios
+
+# Fast-Chat iOS: unsigned simulator build on a macOS runner.
+# The SimpleX Haskell core (static libs) is not in the repo. It is built here with the repo's own
+# Nix flake target "aarch64-darwin-ios:lib:simplex-chat" (same target upstream's Hydra builds),
+# patched with mac2ios (pinned in flake.lock) exactly as scripts/ios/prepare.sh does, and cached.
+# The first run can take hours; later runs reuse the cache while the core sources are unchanged.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [fast-chat/ios-v0.1]
+    paths:
+      - ".github/workflows/fast-chat-ios.yml"
+      - "apps/ios/**"
+      - "fast-chat/scripts/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fast-chat-ios-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  MAC2IOS_REV: 4dcb77d5ea896d749381806dfab5358851b08951 # keep in sync with flake.lock (mobile-core-tools)
+
+jobs:
+  check-config:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fast-Chat configuration checks
+        run: python3 fast-chat/scripts/check_config.py
+
+  core-libs:
+    needs: check-config
+    runs-on: macos-15
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compute core cache key
+        id: key
+        run: |
+          # Inputs that change the Haskell core. Excludes apps/ios so UI-only changes reuse the cache.
+          h=$(cat flake.nix flake.lock cabal.project simplex-chat.cabal $(git ls-files src cbits 2>/dev/null) | shasum -a 256 | cut -c1-32)
+          echo "key=ios-core-libs-v1-$h" >> "$GITHUB_OUTPUT"
+
+      - name: Restore cached core libraries
+        id: cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ios-libs
+          key: ${{ steps.key.outputs.key }}
+
+      - name: Install Nix
+        if: steps.cache.outputs.cache-hit != 'true'
+        uses: cachix/install-nix-action@v30
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+            substituters = https://cache.nixos.org https://cache.iog.io
+            trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY= hydra.iohk.io:f/Ea+s+dFdN+3Y/G+FDgSq+a5NEWhJGzdjvKNGv0/EQ=
+            accept-flake-config = true
+            sandbox = false
+
+      - name: Build iOS core (Nix, aarch64-darwin-ios)
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          nix build ".#\"aarch64-darwin-ios:lib:simplex-chat\"" -L -o core-result
+          ls -l core-result/ || true
+          ls core-result/*.zip
+
+      - name: Build mac2ios (pinned)
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: nix build "github:zw3rk/mobile-core-tools/${MAC2IOS_REV}#mac2ios" -o mac2ios-result
+
+      - name: Prepare device and simulator libraries (as scripts/ios/prepare.sh)
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          set -euo pipefail
+          rm -rf ios-libs && mkdir -p ios-libs/mac ios-libs/ios ios-libs/sim
+          unzip -o core-result/*.zip -d ios-libs/mac
+          chmod +w ios-libs/mac/*
+          cp ios-libs/mac/* ios-libs/ios
+          cp ios-libs/mac/* ios-libs/sim
+          for f in ios-libs/ios/*; do mac2ios-result/bin/mac2ios "$f"; done
+          for f in ios-libs/sim/*; do mac2ios-result/bin/mac2ios -s "$f"; done
+          ls -l ios-libs/ios ios-libs/sim
+
+      - name: Verify core libraries
+        run: |
+          missing=0
+          for d in ios sim; do
+            for p in libgmp.a libgmpxx.a libffi.a 'libHSsimplex-chat-*-ghc*.a'; do
+              if ! ls ios-libs/$d/$p >/dev/null 2>&1; then echo "::error::missing native library ios-libs/$d/$p"; missing=1; fi
+            done
+            n=$(ls ios-libs/$d/libHSsimplex-chat-*.a 2>/dev/null | wc -l)
+            if [ "$n" -ne 2 ]; then echo "::error::expected 2 libHSsimplex-chat-*.a in ios-libs/$d, found $n"; missing=1; fi
+          done
+          exit $missing
+
+      - name: Save core libraries to cache
+        if: steps.cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ios-libs
+          key: ${{ steps.key.outputs.key }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ios-core-libs
+          path: ios-libs
+          retention-days: 7
+
+  simulator-build:
+    needs: core-libs
+    runs-on: macos-15
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: ios-core-libs
+          path: ios-libs
+
+      - name: Install core libraries into the project
+        run: |
+          set -euo pipefail
+          mkdir -p apps/ios/Libraries/ios apps/ios/Libraries/sim
+          cp ios-libs/ios/* apps/ios/Libraries/ios/
+          cp ios-libs/sim/* apps/ios/Libraries/sim/
+          # Point the Xcode project at the library file names that were actually built
+          sh scripts/ios/update-pbxproj.sh
+          python3 fast-chat/scripts/check_config.py
+
+      - name: Xcode version
+        run: |
+          xcodebuild -version
+          xcrun --sdk iphonesimulator --show-sdk-version
+
+      - name: Build for iOS Simulator (no code signing)
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project apps/ios/SimpleX.xcodeproj \
+            -scheme "SimpleX (iOS)" \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            ARCHS=arm64 ONLY_ACTIVE_ARCH=NO \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            -derivedDataPath build/DerivedData \
+            2>&1 | tee xcodebuild.log | tail -n 200
+
+      - name: Inspect resolved configuration of the built app
+        if: success()
+        run: |
+          app=$(find build/DerivedData -name "*.app" -path "*Debug-iphonesimulator*" -maxdepth 5 | head -1)
+          echo "app: $app"
+          for B in "$app" "$app"/PlugIns/*.appex; do
+            echo "== $B"
+            plutil -p "$B/Info.plist" | grep -E "CFBundleDisplayName|CFBundleIdentifier|FastChat" || true
+          done
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: xcodebuild-log
+          path: xcodebuild.log
