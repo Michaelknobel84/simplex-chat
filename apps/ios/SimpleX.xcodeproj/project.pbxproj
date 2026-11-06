@@ -2112,6 +2112,7 @@
 				LLVM_LTO = YES_THIN;
 				MARKETING_VERSION = 7.0.4;
 				OTHER_LDFLAGS = "-Wl,-stack_size,0x1000000";
+				INFOPLIST_KEY_CFBundleDisplayName = "Fast-Chat";
 				PRODUCT_BUNDLE_IDENTIFIER = chat.simplex.app;
 				PRODUCT_NAME = SimpleX;
 				SDKROOT = iphoneos;
@@ -2162,6 +2163,7 @@
 				LLVM_LTO = YES;
 				MARKETING_VERSION = 7.0.4;
 				OTHER_LDFLAGS = "-Wl,-stack_size,0x1000000";
+				INFOPLIST_KEY_CFBundleDisplayName = "Fast-Chat";
 				PRODUCT_BUNDLE_IDENTIFIER = chat.simplex.app;
 				PRODUCT_NAME = SimpleX;
 				SDKROOT = iphoneos;

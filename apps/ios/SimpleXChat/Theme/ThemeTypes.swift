@@ -626,25 +626,26 @@ public struct ThemeModeOverride: Codable, Equatable, Hashable {
     }
 }
 
+// Fast-Chat "Minimal Nightgrey" tokens (replaces upstream dark palette values; structure unchanged)
 public let DarkColorPalette = Colors(
     primary: SimplexBlue,
     primaryVariant: SimplexBlue,
-    secondary: HighOrLowlight,
-    secondaryVariant: DarkGray,
-    background: Color.black,
-    surface: Color(0xFF222222),
+    secondary: Color(0xFFA5A9B0),
+    secondaryVariant: Color(0xFF3A3D43),
+    background: Color(0xFF111215),
+    surface: Color(0xFF202227),
     error: Color.red,
-    onBackground: Color.white,
-    onSurface: Color.white,
+    onBackground: Color(0xFFF2F3F5),
+    onSurface: Color(0xFFF2F3F5),
     isLight: false
 )
 public let DarkColorPaletteApp = AppColors(
-    title: .white,
-    primaryVariant2: Color(0xFF18262E),
-    sentMessage: Color(0xFF18262E),
-    sentQuote: Color(0xFF1D3847),
-    receivedMessage: Color(0xff262627),
-    receivedQuote: Color(0xff373739)
+    title: Color(0xFFF2F3F5),
+    primaryVariant2: Color(0xFF444850),
+    sentMessage: Color(0xFF444850),
+    sentQuote: Color(0xFF292C31),
+    receivedMessage: Color(0xFF33363C),
+    receivedQuote: Color(0xFF3A3D43)
 )
 
 public let LightColorPalette = Colors (
