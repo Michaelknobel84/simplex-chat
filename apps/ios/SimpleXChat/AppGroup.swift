@@ -66,10 +66,52 @@ public let GROUP_DEFAULT_PQ_EXPERIMENTAL_ENABLED = "pqExperimentalEnabled" // no
 public let GROUP_DEFAULT_ONE_HAND_UI = "oneHandUI"
 public let GROUP_DEFAULT_CHAT_BOTTOM_BAR = "chatBottomBar"
 
-// Injected into each host target's Info.plist from FastChat.xcconfig; fallback is the upstream value
-public let APP_GROUP_NAME = Bundle.main.object(forInfoDictionaryKey: "FastChatAppGroup") as? String ?? "group.chat.simplex.app"
+// Fast-Chat configuration is injected into each host target's Info.plist from FastChat.xcconfig.
+// There is deliberately no fallback: a missing or unresolved value is a build configuration error.
+public enum FastChatConfigKey {
+    public static let appGroup = "FastChatAppGroup"
+    public static let keychainAccessGroup = "FastChatKeychainAccessGroup"
+}
 
-public let groupDefaults = UserDefaults(suiteName: APP_GROUP_NAME)!
+public func fastChatConfigProblem(_ key: String, _ raw: Any?, requireTeamPrefix: Bool = false) -> String? {
+    guard let value = raw as? String else { return "\(key) is missing from Info.plist" }
+    let v = value.trimmingCharacters(in: .whitespacesAndNewlines)
+    if v.isEmpty { return "\(key) is empty" }
+    if v.contains("$") { return "\(key) has unresolved build variable: \(v)" }
+    switch key {
+    case FastChatConfigKey.appGroup:
+        if v.range(of: "^group\\.[A-Za-z0-9.-]+$", options: .regularExpression) == nil { return "\(key) is not a valid App Group ID: \(v)" }
+    case FastChatConfigKey.keychainAccessGroup:
+        // Team prefix is empty for simulator builds without a team; only a device build needs it.
+        let pattern = requireTeamPrefix ? "^[A-Z0-9]{10}\\.[A-Za-z0-9.-]+$" : "^[A-Z0-9]{0,10}\\.[A-Za-z0-9.-]+$"
+        if v.range(of: pattern, options: .regularExpression) == nil { return "\(key) is not a valid keychain access group: \(v)" }
+    default: break
+    }
+    return nil
+}
+
+func fastChatConfigValue(_ key: String, requireTeamPrefix: Bool = false) -> String? {
+    let raw = Bundle.main.object(forInfoDictionaryKey: key)
+    if let problem = fastChatConfigProblem(key, raw, requireTeamPrefix: requireTeamPrefix) {
+        NSLog("Fast-Chat configuration error: \(problem)")
+        return nil
+    }
+    return (raw as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
+}
+
+public let APP_GROUP_NAME: String = {
+    guard let name = fastChatConfigValue(FastChatConfigKey.appGroup) else {
+        fatalError("Fast-Chat configuration error: invalid \(FastChatConfigKey.appGroup) in Info.plist; check FASTCHAT_APP_GROUP in apps/ios/FastChat.xcconfig / Local.xcconfig")
+    }
+    return name
+}()
+
+public let groupDefaults: UserDefaults = {
+    guard let defaults = UserDefaults(suiteName: APP_GROUP_NAME) else {
+        fatalError("Fast-Chat configuration error: cannot open UserDefaults for App Group \(APP_GROUP_NAME)")
+    }
+    return defaults
+}()
 
 public let groupAppDefaults: [String: Any] = [
     GROUP_DEFAULT_NTF_ENABLE_LOCAL: false,

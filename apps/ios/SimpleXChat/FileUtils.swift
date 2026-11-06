@@ -54,7 +54,10 @@ public func getDocumentsDirectory() -> URL {
 
 // Spec: spec/database.md#getGroupContainerDirectory
 public func getGroupContainerDirectory() -> URL {
-    FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: APP_GROUP_NAME)!
+    guard let url = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: APP_GROUP_NAME) else {
+        fatalError("Fast-Chat configuration error: App Group \(APP_GROUP_NAME) is not available; check the App Groups entitlement and provisioning for this target")
+    }
+    return url
 }
 
 func getAppDirectory() -> URL {

@@ -10,8 +10,12 @@ import Foundation
 import Security
 
 private let ACCESS_POLICY: CFString = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
-// Injected into each host target's Info.plist ($(AppIdentifierPrefix) + app ID); fallback is the upstream value
-private let ACCESS_GROUP: String = Bundle.main.object(forInfoDictionaryKey: "FastChatKeychainAccessGroup") as? String ?? "5NN7GUYB6T.chat.simplex.app"
+// nil when the Info.plist value is missing/unresolved/invalid: every Keychain operation then fails closed.
+#if targetEnvironment(simulator)
+private let ACCESS_GROUP: String? = fastChatConfigValue(FastChatConfigKey.keychainAccessGroup)
+#else
+private let ACCESS_GROUP: String? = fastChatConfigValue(FastChatConfigKey.keychainAccessGroup, requireTeamPrefix: true)
+#endif
 private let DATABASE_PASSWORD_ITEM: String = "databasePassword"
 private let APP_PASSWORD_ITEM: String = "appPassword"
 private let SELF_DESTRUCT_PASSWORD_ITEM: String = "selfDestructPassword"
@@ -52,6 +56,10 @@ func randomDatabasePassword() -> String {
 }
 
 private func getItemData(forKey key: String) -> Data? {
+    guard ACCESS_GROUP != nil else {
+        logger.error("getItemData: keychain access group is not configured, refusing to read '\(key)'")
+        return nil
+    }
     var query = baseItemQuery(forKey: key)
     query[kSecMatchLimit] = kSecMatchLimitOne
     query[kSecReturnData] = true as AnyObject?
@@ -72,6 +80,10 @@ private func getItemString(forKey key: String) -> String? {
 }
 
 private func setItemData(_ data: Data, forKey key: String) -> Bool {
+    guard ACCESS_GROUP != nil else {
+        logger.error("setItemData: keychain access group is not configured, refusing to store '\(key)'")
+        return false
+    }
     var query = baseItemQuery(forKey: key)
     var update = [NSString : AnyObject]()
     update[kSecValueData] = data as AnyObject?
@@ -98,6 +110,10 @@ private func setItemString(_ s: String, forKey key: String) -> Bool {
 }
 
 private func deleteItem(forKey key: String) -> Bool {
+    guard ACCESS_GROUP != nil else {
+        logger.error("deleteItem: keychain access group is not configured, refusing to delete '\(key)'")
+        return false
+    }
     let query = baseItemQuery(forKey: key)
     if getItemData(forKey: key) != nil {
         let status = SecItemDelete(query as CFDictionary)
@@ -114,7 +130,7 @@ private func baseItemQuery(forKey key: String) -> [NSString : AnyObject] {
     query[kSecClass] = kSecClassGenericPassword
     query[kSecAttrAccount] = key as AnyObject?
     #if TARGET_OS_IOS && !TARGET_OS_SIMULATOR
-        query[kSecAttrAccessGroup] = ACCESS_GROUP
+        query[kSecAttrAccessGroup] = ACCESS_GROUP as AnyObject?
     #endif
     return query
 }

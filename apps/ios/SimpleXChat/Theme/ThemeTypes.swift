@@ -630,7 +630,7 @@ public struct ThemeModeOverride: Codable, Equatable, Hashable {
 public let DarkColorPalette = Colors(
     primary: SimplexBlue,
     primaryVariant: SimplexBlue,
-    secondary: Color(0xFFA5A9B0),
+    secondary: Color(0xFFB8BCC3), // lightened from #A5A9B0 for >= 4.5:1 on the outgoing bubble
     secondaryVariant: Color(0xFF3A3D43),
     background: Color(0xFF111215),
     surface: Color(0xFF202227),
